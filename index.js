@@ -69,19 +69,30 @@ async function handleRequest(request) {
   for (var i =0; i<=numberOfTweets;i++){
     // Get random tweet
     var tweet = tweets[Math.floor(Math.random() * tweets.length)];
+    var noMps = (tweet.fields["Text"].match(/INSERTMP/g) || []).length
+    console.log(noMps)
     // Get random MP
-    var mp = mps[Math.floor(Math.random() * mps.length)];
-    console.log(mp.fields)
     var newTweet = {
-      'text': tweet.fields["Text"].replace(INSERT_MP,mp.fields.twitter_username),
-      'link': tweet.fields["Link"].replace(INSERT_MP,mp.fields.twitter_username),
-      'ctt': tweet.fields["ClickToTweet"]['url'].replace(INSERT_MP,mp.fields.twitter_username)
+      'text': tweet.fields["Text"],
+      'link': tweet.fields["Link"],
+      'ctt': tweet.fields["ClickToTweet"]['url']
     }
-    console.log(JSON.stringify(newTweet))
+    for (var mpi = 0;mpi<noMps;mpi++){
+      var mp = mps[Math.floor(Math.random() * mps.length)];
+      newTweet.text = newTweet.text.replace(INSERT_MP,mp.fields.twitter_username);
+      newTweet.ctt = newTweet.ctt.replace(INSERT_MP,mp.fields.twitter_username);
+      newTweet.link = newTweet.link.replace(INSERT_MP,mp.fields.twitter_username);
+    }
+    // console.log(JSON.stringify(newTweet))
     generatedTweets.tweets.push(newTweet)
   }
 
   return new Response(JSON.stringify(generatedTweets), {
-    headers: { 'content-type': 'application/json' },
+    headers: {
+      'content-type': 'application/json',
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET,HEAD,POST,OPTIONS",
+      "Access-Control-Max-Age": "86400",
+    },
   })
 }
