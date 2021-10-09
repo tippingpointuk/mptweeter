@@ -66,7 +66,7 @@ async function handleRequest(request) {
   }
   console.log( JSON.stringify(tweets) )
   var generatedTweets = {"tweets": []};
-  for (var i =0; i<=numberOfTweets;i++){
+  for (var i =0; i<numberOfTweets;i++){
     // Get random tweet
     var tweet = tweets[Math.floor(Math.random() * tweets.length)];
     var noMps = (tweet.fields["Text"].match(/INSERTMP/g) || []).length
@@ -83,6 +83,7 @@ async function handleRequest(request) {
       newTweet.ctt = newTweet.ctt.replace(INSERT_MP,mp.fields.twitter_username);
       newTweet.link = newTweet.link.replace(INSERT_MP,mp.fields.twitter_username);
       newTweet.html = generateHtmlTweet(newTweet);
+      console.log(newTweet.html)
     }
     // console.log(JSON.stringify(newTweet))
     generatedTweets.tweets.push(newTweet)
@@ -101,30 +102,39 @@ async function handleRequest(request) {
 const generateHtmlTweet = function(tweet){
   // Got through each work and add <span>s for hashtags etc
   var tweetByWord = tweet.text.split(' ');
-  var tweetText = "";
-  for (var i in tweetByWord){
-    var word = tweetByWord[i];
-    console.log(word)
-    var spanClass = null;
-    if (word[0] == "#"){
-      spanClass = "hashtag";
-    }else if (word[0] == "@"){
-      spanClass = "at";
-    }else if (word.includes("://")){
-      spanClass = "link";
+  var tweetByLine = tweet.text.split('\n');
+  var tweetByWordProcessed = [];
+  for (var l in tweetByLine){
+    var lineByWord = tweetByLine[l].split(' ');
+    for (var w in lineByWord){
+      var word = lineByWord[w];
+      tweetByWordProcessed.push(processWord(word));
     }
-    if (spanClass){
-      tweetText += ` <span class="${spanClass}">${word}</span>`
-    }else{
-      tweetText += ` ${word}`
-    }
+    tweetByWordProcessed.push('<br>')
   }
+  console.log(JSON.stringify(tweetByWordProcessed))
+  tweetText = tweetByWordProcessed.join(' ').replace("\n", "");
   var tweet =  `
     <div class=tweet>
       <a target="_blank" href="${ tweet.ctt }">
-        ${ tweetText.replace("\n", "<br><br>") } <span class='link' >${ tweet.link }</span>
+        ${ tweetText } <span class='link' >${ tweet.link }</span>
       </a>
     </div>
   `;
   return tweet;
+}
+const processWord = (word) => {
+  var spanClass = null;
+  if (word[0] == "#"){
+    spanClass = "hashtag";
+  }else if (word[0] == "@"){
+    spanClass = "at";
+  }else if (word.includes("://")){
+    spanClass = "link";
+  }
+  if (spanClass){
+    return `<span class="${spanClass}">${word}</span>`;
+  }else{
+    return word;
+  }
 }
