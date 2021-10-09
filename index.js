@@ -75,13 +75,14 @@ async function handleRequest(request) {
     var newTweet = {
       'text': tweet.fields["Text"],
       'link': tweet.fields["Link"],
-      'ctt': tweet.fields["ClickToTweet"]['url']
+      'ctt' : tweet.fields["ClickToTweet"]['url']
     }
     for (var mpi = 0;mpi<noMps;mpi++){
       var mp = mps[Math.floor(Math.random() * mps.length)];
       newTweet.text = newTweet.text.replace(INSERT_MP,mp.fields.twitter_username);
       newTweet.ctt = newTweet.ctt.replace(INSERT_MP,mp.fields.twitter_username);
       newTweet.link = newTweet.link.replace(INSERT_MP,mp.fields.twitter_username);
+      newTweet.html = generateHtmlTweet(newTweet);
     }
     // console.log(JSON.stringify(newTweet))
     generatedTweets.tweets.push(newTweet)
@@ -95,4 +96,35 @@ async function handleRequest(request) {
       "Access-Control-Max-Age": "86400",
     },
   })
+}
+
+const generateHtmlTweet = function(tweet){
+  // Got through each work and add <span>s for hashtags etc
+  var tweetByWord = tweet.text.split(' ');
+  var tweetText = "";
+  for (var i in tweetByWord){
+    var word = tweetByWord[i];
+    console.log(word)
+    var spanClass = null;
+    if (word[0] == "#"){
+      spanClass = "hashtag";
+    }else if (word[0] == "@"){
+      spanClass = "at";
+    }else if (word.includes("://")){
+      spanClass = "link";
+    }
+    if (spanClass){
+      tweetText += ` <span class="${spanClass}">${word}</span>`
+    }else{
+      tweetText += ` ${word}`
+    }
+  }
+  var tweet =  `
+    <div class=tweet>
+      <a target="_blank" href="${ tweet.ctt }">
+        ${ tweetText.replace("\n", "<br><br>") } <span class='link' >${ tweet.link }</span>
+      </a>
+    </div>
+  `;
+  return tweet;
 }
