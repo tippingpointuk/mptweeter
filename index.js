@@ -117,7 +117,7 @@ const generateHtmlTweet = function(tweet){
   var tweet =  `
     <div class=tweet>
       <a target="_blank" href="${ tweet.ctt }">
-        ${ tweetText } <span class='link' >${ tweet.link }</span>
+        ${ tweetText } <span class='url' >${ tweet.link }</span>
       </a>
     </div>
   `;
@@ -130,7 +130,7 @@ const processWord = (word) => {
   }else if (word[0] == "@"){
     spanClass = "at";
   }else if (word.includes("://")){
-    spanClass = "link";
+    spanClass = "url";
   }
   if (spanClass){
     return `<span class="${spanClass}">${word}</span>`;

@@ -1,15 +1,17 @@
-# 👷 `worker-template` Hello World
+# A CloudFlare worker to generate shareable Tweets
 
-A template for kick starting a Cloudflare worker project.
+This worker takes requests, and the puts together a list of tweets from one
+Airtable, and a list of targets from another Airtable. It combines them randomly.
 
-[`index.js`](https://github.com/cloudflare/worker-template/blob/master/index.js) is the content of the Workers script.
+## Tweets
 
-#### Wrangler
+In this case, the tool is for the [#StopCambo](https://stopcambo.org.uk)
+campaign. You can see the list of tweets in [this airtable](https://airtable.com/shrm8DQQlhpqOEr7U).
 
-To generate using [wrangler](https://github.com/cloudflare/wrangler)
+Each tweet has @INSERTMP in it, which is replaced by the target handle.
 
-```
-wrangler generate projectname https://github.com/cloudflare/worker-template
-```
+## Targets
 
-Further documentation for Wrangler can be found [here](https://developers.cloudflare.com/workers/tooling/wrangler).
+The targets are in another Airtable, in this case the Tory MPs with twitter.
+
+[You can see them here](https://airtable.com/shrcRPrywXrXFE8rj).
