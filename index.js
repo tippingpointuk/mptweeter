@@ -11,23 +11,17 @@ addEventListener('fetch', event => {
  */
 async function handleRequest(request) {
   var path = request.url.split("//")[1].split("/");
-  // if (path.length <= 2){
-  //   path = []
-  // }else{
-  //   path.shift();
-  // }
-  try {
-    var numberOfTweets = parseInt(path[1])
-  } catch (e) {
-    console.log(e)
+  var body = await request.json()
+  console.log( JSON.stringify( body ) )
+  if (body.tweets){
+    var numberOfTweets = parseInt(body.tweets);
+  }else{
     var numberOfTweets = 3;
   }
-  console.log(path)
-  console.log(numberOfTweets)
 
   // Get MPs
   var offset = true
-  var baseurl = "https://api.airtable.com/v0/appdNlKCQlU1CczEx/tblb0Vnvs9Hunt77b?view=viwmvRNLuTByBvMnV&fields%5B%5D=display_name&fields%5B%5D=twitter_username"
+  var baseurl = `https://api.airtable.com/v0/appdNlKCQlU1CczEx/tblb0Vnvs9Hunt77b?view=${ body.mpView }&fields%5B%5D=display_name&fields%5B%5D=twitter_username`
   var airtableHeaders = {
     "Authorization": `Bearer ${AIRTABLE_API_KEY}`,
     "content-type": "application/json;charset=UTF-8",
@@ -36,9 +30,10 @@ async function handleRequest(request) {
   var mps = [];
   var url = baseurl;
   while (offset){
+    console.log(url)
     const res = await fetch(url, {headers:airtableHeaders});
     var resJson = await res.json();
-    // console.log(JSON.stringify(resJson.records))
+    console.log(JSON.stringify(resJson))
     mps = mps.concat(resJson.records);
     if (resJson.offset){
       var url = `${baseurl}&offset=${resJson.offset}`;
@@ -46,10 +41,10 @@ async function handleRequest(request) {
       offset = false;
     }
   }
-  console.log(mps.length )
+  // console.log(mps.length )
   // Get Tweets
   var offset = true
-  var baseurl = "https://api.airtable.com/v0/app1cmhkrHR6nGWUn/tblPq2RGZk7DlciMj?view=viwypQZddK7OJOQpU"
+  var baseurl = `https://api.airtable.com/v0/app1cmhkrHR6nGWUn/tblPq2RGZk7DlciMj?view=${ body.tweetView }`
   var resJson = {};
   var tweets = [];
   var url = baseurl;
@@ -64,13 +59,13 @@ async function handleRequest(request) {
       offset = false;
     }
   }
-  console.log( JSON.stringify(tweets) )
+  // console.log( JSON.stringify(tweets) )
   var generatedTweets = {"tweets": []};
   for (var i =0; i<numberOfTweets;i++){
     // Get random tweet
     var tweet = tweets[Math.floor(Math.random() * tweets.length)];
     var noMps = (tweet.fields["Text"].match(/INSERTMP/g) || []).length
-    console.log(noMps)
+    // console.log(noMps)
     // Get random MP
     var newTweet = {
       'text': tweet.fields["Text"],
@@ -79,11 +74,17 @@ async function handleRequest(request) {
     }
     for (var mpi = 0;mpi<noMps;mpi++){
       var mp = mps[Math.floor(Math.random() * mps.length)];
-      newTweet.text = newTweet.text.replace(INSERT_MP,mp.fields.twitter_username);
-      newTweet.ctt = newTweet.ctt.replace(INSERT_MP,mp.fields.twitter_username);
-      newTweet.link = newTweet.link.replace(INSERT_MP,mp.fields.twitter_username);
+      console.log(JSON.stringify(mp))
+      Object.keys(newTweet).forEach(key => {
+        if (newTweet[key]){
+          if (mp.fields.twitter_username){
+            newTweet[key] = newTweet[key].replace(INSERT_MP,mp.fields.twitter_username);
+          }
+        }
+
+      })
       newTweet.html = generateHtmlTweet(newTweet);
-      console.log(newTweet.html)
+      // console.log(newTweet.html)
     }
     // console.log(JSON.stringify(newTweet))
     generatedTweets.tweets.push(newTweet)
@@ -95,6 +96,7 @@ async function handleRequest(request) {
       "Access-Control-Allow-Origin": "*",
       "Access-Control-Allow-Methods": "GET,HEAD,POST,OPTIONS",
       "Access-Control-Max-Age": "86400",
+      "Access-Control-Allow-Headers": request.headers.get("Access-Control-Request-Headers")
     },
   })
 }
@@ -112,12 +114,15 @@ const generateHtmlTweet = function(tweet){
     }
     tweetByWordProcessed.push('<br>')
   }
-  console.log(JSON.stringify(tweetByWordProcessed))
+  // console.log(JSON.stringify(tweetByWordProcessed))
   tweetText = tweetByWordProcessed.join(' ').replace("\n", "");
+  if (tweet.link){
+    tweetText += `<span class='url' >${ tweet.link }</span>`
+  }
   var tweet =  `
     <div class=tweet>
       <a target="_blank" href="${ tweet.ctt }">
-        ${ tweetText } <span class='url' >${ tweet.link }</span>
+        ${ tweetText }
       </a>
     </div>
   `;
