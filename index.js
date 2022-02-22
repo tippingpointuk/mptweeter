@@ -1,6 +1,6 @@
 // var Airtable = require("airtable");
-const INSERT_TARGET = "INSERTMP"
-const INSERT_TARGET_REGEX = /INSERTMP/g
+const INSERT_TARGET = "INSERTTARGET"
+const INSERT_TARGET_REGEX = /INSERTTARGET/g
 
 const AIRTABLE_CONFIG = {
     "targets":{
@@ -9,7 +9,7 @@ const AIRTABLE_CONFIG = {
     },
     "tweets":{
       "base": "appgY3TFV53N67C9w",
-      "table": "tbl6DbX2Qr2BAI150"
+      "table": "tbl4cJt1tIjk4DY1s"
     }
   };
 
@@ -37,14 +37,12 @@ async function handleRequest(request) {
 
   // Get MPs
   var offset = true
-  var baseurl = `https://api.airtable.com/v0/${ AIRTABLE_CONFIG.targets.base }/${AIRTABLE_CONFIG.targets.table}?view=${body.mpView}&`
+  var baseurl = `https://api.airtable.com/v0/${ AIRTABLE_CONFIG.targets.base }/${AIRTABLE_CONFIG.targets.table}?view=${body.mpView}&fields%5B%5D=Name&fields%5B%5D=Twitter`
   let targetRequestBody = {
     view: body.mpView,
     fields: [
-      "display_name",
-      "twitter_username",
-      "first_name",
-      "last_name"
+      "Name",
+      "Twitter"
     ]
   }
   var airtableHeaders = {
@@ -57,8 +55,7 @@ async function handleRequest(request) {
   while (offset){
     console.log(url)
     const res = await fetch(url, {
-      headers: airtableHeaders,
-      body: targetRequestBody
+      headers: airtableHeaders
     });
     resJson = await res.json();
     console.log(JSON.stringify(resJson))
@@ -76,10 +73,11 @@ async function handleRequest(request) {
   resJson = {};
   var tweets = [];
   url = baseurl;
+  console.log(url)
   while (offset){
     const res = await fetch(url, {headers:airtableHeaders});
     resJson = await res.json();
-    // console.log(JSON.stringify(resJson.records))
+    console.log(JSON.stringify(resJson))
     tweets = tweets.concat(resJson.records);
     if (resJson.offset){
       url = `${baseurl}&offset=${resJson.offset}`;
@@ -97,7 +95,7 @@ async function handleRequest(request) {
     // Get random MP
     var newTweet = {
       'text': tweet.fields["Text"],
-      'link': tweet.fields["Link"],
+      'link': Object.keys(tweet.fields).includes("Link") ? tweet.fields["Link"] : "",
       'ctt' : tweet.fields["ClickToTweet"]['url']
     }
     for (var mpi = 0;mpi<noMps;mpi++){
@@ -106,8 +104,8 @@ async function handleRequest(request) {
       Object.keys(newTweet).forEach(key => {
         if (newTweet[key]){
           // Replace INSERTMP for
-          if (mp.fields.twitter_username){
-            newTweet[key] = newTweet[key].replace(INSERT_TARGET,mp.fields.twitter_username);
+          if (mp.fields.Twitter){
+            newTweet[key] = newTweet[key].replace(INSERT_TARGET,mp.fields.Twitter);
           }
         }
 
