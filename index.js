@@ -3,17 +3,43 @@ const INSERT_TARGET = "INSERTTARGET"
 const INSERT_TARGET_REGEX = /INSERTTARGET/g
 
 const AIRTABLE_CONFIG = {
+  silvertown:   {
+    "dynamic":{
+      "string": "INSERTTARGET",
+      "regex": /INSERTTARGET/g
+    },
     "targets":{
       "base": "appgY3TFV53N67C9w",
-      "table": "tbl0KFPvcwxHadJMl"
+      "table": "tbl0KFPvcwxHadJMl",
+      "fields":{
+        "name": "Name",
+        "twitter":"Twitter"
+      }
     },
     "tweets":{
       "base": "appgY3TFV53N67C9w",
       "table": "tbl4cJt1tIjk4DY1s"
     }
-  };
-
-console.log(AIRTABLE_CONFIG.targets.base)
+  },
+  stopcambo: {
+    "dynamic":{
+      "string": "INSERTMP",
+      "regex": /INSERTMP/g
+    },
+    "targets":{
+      "base": "appdNlKCQlU1CczEx",
+      "table": "tblb0Vnvs9Hunt77b",
+      "fields":{
+        "name": "display_name",
+        "twitter":"twitter_username"
+      }
+    },
+    "tweets":{
+      "base": "app1cmhkrHR6nGWUn",
+      "table": "tblPq2RGZk7DlciMj"
+    }
+  }
+};
 
 
 
@@ -25,26 +51,18 @@ addEventListener('fetch', event => {
  * @param {Request} request
  */
 async function handleRequest(request) {
-  console.log(AIRTABLE_CONFIG.targets)
   var path = request.url.split("//")[1].split("/");
+  var group = path[1] || 'stopcambo'
+  let config = Object.keys(AIRTABLE_CONFIG).includes(group) ? AIRTABLE_CONFIG[group] : AIRTABLE_CONFIG.stopcambo;
+  console.log(`Getting tweets for ${group}`)
+  console.log(JSON.stringify(config))
   var body = await request.json()
-  console.log( JSON.stringify( body ) )
-  if (body.tweets){
-    var numberOfTweets = parseInt(body.tweets);
-  }else{
-    var numberOfTweets = 3;
-  }
+  // console.log( JSON.stringify( body ) )
+  var numberOfTweets = body.tweets ? parseInt(body.tweets) : 3;
 
   // Get MPs
   var offset = true
-  var baseurl = `https://api.airtable.com/v0/${ AIRTABLE_CONFIG.targets.base }/${AIRTABLE_CONFIG.targets.table}?view=${body.mpView}&fields%5B%5D=Name&fields%5B%5D=Twitter`
-  let targetRequestBody = {
-    view: body.mpView,
-    fields: [
-      "Name",
-      "Twitter"
-    ]
-  }
+  var baseurl = `https://api.airtable.com/v0/${ config.targets.base }/${config.targets.table}?view=${body.mpView}&fields%5B%5D=${encodeURIComponent(config.targets.fields.name)}&fields%5B%5D=${encodeURIComponent(config.targets.fields.twitter)}`
   var airtableHeaders = {
     "Authorization": `Bearer ${AIRTABLE_API_KEY}`,
     "content-type": "application/json;charset=UTF-8",
@@ -69,7 +87,7 @@ async function handleRequest(request) {
   // console.log(mps.length )
   // Get Tweets
   var offset = true
-  var baseurl = `https://api.airtable.com/v0/${ AIRTABLE_CONFIG.tweets.base }/${AIRTABLE_CONFIG.tweets.table}?view=${ body.tweetView }`
+  var baseurl = `https://api.airtable.com/v0/${ config.tweets.base }/${config.tweets.table}?view=${ body.tweetView }`
   resJson = {};
   var tweets = [];
   url = baseurl;
@@ -77,7 +95,7 @@ async function handleRequest(request) {
   while (offset){
     const res = await fetch(url, {headers:airtableHeaders});
     resJson = await res.json();
-    console.log(JSON.stringify(resJson))
+    // console.log(JSON.stringify(resJson))
     tweets = tweets.concat(resJson.records);
     if (resJson.offset){
       url = `${baseurl}&offset=${resJson.offset}`;
@@ -90,7 +108,7 @@ async function handleRequest(request) {
   for (var i =0; i<numberOfTweets;i++){
     // Get random tweet
     var tweet = tweets[Math.floor(Math.random() * tweets.length)];
-    var noMps = (tweet.fields["Text"].match(INSERT_TARGET_REGEX) || []).length
+    var noMps = (tweet.fields["Text"].match(config.dynamic.regex) || []).length
     // console.log(noMps)
     // Get random MP
     var newTweet = {
@@ -104,13 +122,14 @@ async function handleRequest(request) {
       Object.keys(newTweet).forEach(key => {
         if (newTweet[key]){
           // Replace INSERTMP for
-          if (mp.fields.Twitter){
-            newTweet[key] = newTweet[key].replace(INSERT_TARGET,mp.fields.Twitter);
+          if (mp.fields[config.targets.fields.twitter]){
+            console.log(config.dynamic.string)
+            newTweet[key] = newTweet[key].replace(config.dynamic.string,mp.fields[config.targets.fields.twitter]);
           }
         }
 
       })
-      newTweet.mp = mp.fields;
+      newTweet.target = mp.fields;
       newTweet.html = await generateHtmlTweet(newTweet);
       // console.log(newTweet.html)
     }
@@ -120,7 +139,7 @@ async function handleRequest(request) {
 
   return new Response(JSON.stringify(generatedTweets), {
     headers: {
-      'content-type': 'application/json',
+      'Content-Type': 'application/json',
       "Access-Control-Allow-Origin": "*",
       "Access-Control-Allow-Methods": "GET,HEAD,POST,OPTIONS",
       "Access-Control-Max-Age": "86400",
@@ -147,14 +166,13 @@ const generateHtmlTweet = async function(tweet){
   if (tweet.link){
     tweetText += /*html*/`<span class='url' >${ tweet.link }</span>`
   }
-  var tweet =  /*html*/`
+  return /*html*/`
     <div class=tweet>
-      <a target="_blank" href="${ tweet.ctt }" >
+      <a target="_blank" href="${ tweet.ctt }" data-tweet="${ JSON.stringify(tweet) }">
         ${ tweetText }
       </a>
     </div>
   `;
-  return tweet;
 }
 const processWord = (word) => {
   var spanClass = null;
